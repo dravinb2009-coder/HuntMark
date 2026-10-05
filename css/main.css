@@ -1,0 +1,904 @@
+/* =========================================================
+   HUNTMARK — MAIN STYLESHEET
+   Hunt smarter. Know your land.
+========================================================= */
+
+
+/* =========================================================
+   1. BRAND COLORS
+========================================================= */
+
+:root {
+
+    --forest-green: #183A2A;
+    --dark-forest: #10251B;
+
+    --camo-olive: #3F4728;
+    --camo-brown: #59452C;
+
+    --hunter-orange: #D97706;
+
+    --earth-tan: #C8B58A;
+    --background: #F4F1E8;
+
+    --text-dark: #172019;
+    --text-light: #F4F1E8;
+
+    --white: #FFFFFF;
+
+    --border: rgba(16, 37, 27, 0.14);
+
+    --shadow:
+        0 10px 30px rgba(16, 37, 27, 0.18);
+}
+
+
+/* =========================================================
+   2. GLOBAL RESET
+========================================================= */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+html,
+body {
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    color: var(--text-dark);
+
+    background: var(--background);
+}
+
+
+button {
+
+    font-family: inherit;
+
+    cursor: pointer;
+
+    border: none;
+}
+
+
+/* =========================================================
+   3. MAIN APPLICATION
+========================================================= */
+
+body {
+
+    min-height: 100vh;
+}
+
+
+.app {
+
+    position: relative;
+
+    width: 100%;
+    height: calc(100vh - 74px);
+
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   4. HUNTMARK HEADER
+========================================================= */
+
+.topbar {
+
+    position: relative;
+
+    z-index: 1000;
+
+    height: 74px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 25px;
+
+    padding: 10px 20px;
+
+    color: var(--white);
+
+    /*
+       Woodland camouflage-inspired background
+    */
+
+    background:
+
+        radial-gradient(
+            ellipse at 12% 35%,
+            rgba(89, 69, 44, 0.95) 0 11%,
+            transparent 12%
+        ),
+
+        radial-gradient(
+            ellipse at 31% 75%,
+            rgba(63, 71, 40, 0.95) 0 14%,
+            transparent 15%
+        ),
+
+        radial-gradient(
+            ellipse at 54% 25%,
+            rgba(89, 69, 44, 0.9) 0 12%,
+            transparent 13%
+        ),
+
+        radial-gradient(
+            ellipse at 76% 70%,
+            rgba(63, 71, 40, 0.95) 0 15%,
+            transparent 16%
+        ),
+
+        radial-gradient(
+            ellipse at 94% 30%,
+            rgba(89, 69, 44, 0.85) 0 13%,
+            transparent 14%
+        ),
+
+        linear-gradient(
+            135deg,
+            var(--dark-forest),
+            #31412A 42%,
+            var(--forest-green) 70%,
+            var(--camo-brown)
+        );
+
+    box-shadow:
+        0 3px 12px rgba(0, 0, 0, 0.25);
+}
+
+
+/* =========================================================
+   5. BRAND
+========================================================= */
+
+.brand {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    min-width: 240px;
+}
+
+
+.brand-mark {
+
+    width: 45px;
+    height: 45px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    color: var(--hunter-orange);
+
+    font-size: 30px;
+
+    filter:
+        drop-shadow(
+            0 2px 2px rgba(0, 0, 0, 0.4)
+        );
+}
+
+
+.brand-text h1 {
+
+    font-size: 25px;
+
+    line-height: 1;
+
+    font-weight: 900;
+
+    letter-spacing: 1px;
+}
+
+
+.brand-text h1 span {
+
+    color: var(--hunter-orange);
+}
+
+
+.brand-text p {
+
+    margin-top: 5px;
+
+    color: #f1ead9;
+
+    font-size: 11px;
+
+    letter-spacing: 0.2px;
+}
+
+
+/* =========================================================
+   6. MAIN NAVIGATION
+========================================================= */
+
+.main-nav {
+
+    height: 100%;
+
+    display: flex;
+
+    align-items: stretch;
+
+    gap: 4px;
+
+    margin-left: auto;
+}
+
+
+.nav-button {
+
+    padding: 0 16px;
+
+    color: var(--text-light);
+
+    background: transparent;
+
+    font-size: 14px;
+
+    font-weight: 750;
+
+    border-bottom:
+        3px solid transparent;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+}
+
+
+.nav-button:hover {
+
+    background:
+        rgba(0, 0, 0, 0.16);
+
+    border-bottom-color:
+        var(--hunter-orange);
+}
+
+
+.nav-button.active {
+
+    background:
+        rgba(0, 0, 0, 0.16);
+
+    border-bottom-color:
+        var(--hunter-orange);
+}
+
+
+/* =========================================================
+   7. MOBILE MENU
+========================================================= */
+
+.mobile-menu {
+
+    display: none;
+
+    width: 44px;
+    height: 44px;
+
+    margin-left: auto;
+
+    border-radius: 10px;
+
+    color: var(--white);
+
+    background:
+        rgba(0, 0, 0, 0.25);
+
+    font-size: 22px;
+}
+
+
+/* =========================================================
+   8. MAP AREA
+========================================================= */
+
+.map-container {
+
+    position: absolute;
+
+    inset: 0;
+
+    background:
+        #d9dfd4;
+}
+
+
+.map-placeholder {
+
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    background:
+
+        linear-gradient(
+            rgba(24, 58, 42, 0.05),
+            rgba(24, 58, 42, 0.05)
+        ),
+
+        repeating-linear-gradient(
+            45deg,
+            rgba(63, 71, 40, 0.05) 0,
+            rgba(63, 71, 40, 0.05) 2px,
+            transparent 2px,
+            transparent 20px
+        ),
+
+        #dfe5d9;
+}
+
+
+.map-placeholder-content {
+
+    text-align: center;
+
+    padding: 30px;
+
+    border-radius: 18px;
+
+    background:
+        rgba(244, 241, 232, 0.93);
+
+    box-shadow:
+        var(--shadow);
+}
+
+
+.map-icon {
+
+    font-size: 45px;
+
+    margin-bottom: 10px;
+}
+
+
+.map-placeholder-content h2 {
+
+    margin-bottom: 7px;
+
+    color: var(--dark-forest);
+
+    font-size: 22px;
+}
+
+
+.map-placeholder-content p {
+
+    color: #59635b;
+
+    font-size: 13px;
+}
+
+
+/* =========================================================
+   9. MAP TOOLBAR
+========================================================= */
+
+.map-tools {
+
+    position: absolute;
+
+    z-index: 500;
+
+    top: 16px;
+    left: 16px;
+
+    width: 92px;
+
+    padding: 8px;
+
+    border-radius: 14px;
+
+    background:
+        rgba(16, 37, 27, 0.94);
+
+    box-shadow:
+        var(--shadow);
+
+    backdrop-filter:
+        blur(8px);
+}
+
+
+.map-tool {
+
+    width: 100%;
+
+    min-height: 67px;
+
+    margin-bottom: 6px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: 4px;
+
+    border-radius: 10px;
+
+    color: var(--text-light);
+
+    background:
+        rgba(255, 255, 255, 0.045);
+
+    border:
+        1px solid rgba(255, 255, 255, 0.08);
+
+    transition:
+        background 0.15s ease,
+        transform 0.15s ease;
+}
+
+
+.map-tool:last-child {
+
+    margin-bottom: 0;
+}
+
+
+.map-tool:hover {
+
+    background:
+        rgba(255, 255, 255, 0.11);
+
+    transform:
+        translateY(-1px);
+}
+
+
+.map-tool span {
+
+    font-size: 22px;
+}
+
+
+.map-tool small {
+
+    font-size: 10px;
+
+    font-weight: 750;
+}
+
+
+/* =========================================================
+   10. PROPERTY PANEL
+========================================================= */
+
+.property-panel {
+
+    position: absolute;
+
+    z-index: 500;
+
+    top: 16px;
+    right: 16px;
+
+    width: 290px;
+
+    max-height:
+        calc(100% - 32px);
+
+    overflow-y: auto;
+
+    border-radius: 15px;
+
+    background:
+        rgba(244, 241, 232, 0.96);
+
+    box-shadow:
+        var(--shadow);
+
+    backdrop-filter:
+        blur(10px);
+}
+
+
+.panel-section {
+
+    padding: 16px;
+
+    border-bottom:
+        1px solid var(--border);
+}
+
+
+.panel-section:last-child {
+
+    border-bottom: none;
+}
+
+
+.panel-section h2 {
+
+    margin-bottom: 5px;
+
+    color:
+        var(--dark-forest);
+
+    font-size: 17px;
+
+    font-weight: 850;
+}
+
+
+.panel-section h3 {
+
+    margin-bottom: 12px;
+
+    color:
+        var(--dark-forest);
+
+    font-size: 15px;
+
+    font-weight: 850;
+}
+
+
+.panel-subtitle {
+
+    color:
+        #59635b;
+
+    font-size: 12px;
+}
+
+
+/* =========================================================
+   11. ACTION BUTTONS
+========================================================= */
+
+.primary-action,
+.secondary-action {
+
+    width: 100%;
+
+    padding: 11px 12px;
+
+    margin-bottom: 8px;
+
+    border-radius: 9px;
+
+    text-align: left;
+
+    font-weight: 800;
+
+    transition:
+        filter 0.15s ease,
+        transform 0.15s ease;
+}
+
+
+.primary-action {
+
+    color: var(--white);
+
+    background:
+        var(--hunter-orange);
+}
+
+
+.secondary-action {
+
+    color: var(--white);
+
+    background:
+        var(--forest-green);
+}
+
+
+.primary-action:hover,
+.secondary-action:hover {
+
+    filter:
+        brightness(1.08);
+
+    transform:
+        translateY(-1px);
+}
+
+
+.primary-action:last-child,
+.secondary-action:last-child {
+
+    margin-bottom: 0;
+}
+
+
+/* =========================================================
+   12. PROPERTY STATISTICS
+========================================================= */
+
+.property-stats {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, 1fr);
+
+    gap: 8px;
+}
+
+
+.stat {
+
+    padding: 11px;
+
+    border-radius: 9px;
+
+    background:
+        rgba(24, 58, 42, 0.07);
+
+    text-align: center;
+}
+
+
+.stat strong {
+
+    display: block;
+
+    color:
+        var(--forest-green);
+
+    font-size: 20px;
+}
+
+
+.stat span {
+
+    display: block;
+
+    margin-top: 2px;
+
+    color:
+        #59635b;
+
+    font-size: 10px;
+
+    font-weight: 700;
+}
+
+
+/* =========================================================
+   13. MAP CONTROLS
+========================================================= */
+
+.map-controls {
+
+    position: absolute;
+
+    z-index: 500;
+
+    left: 125px;
+
+    bottom: 18px;
+
+    display: flex;
+
+    gap: 7px;
+}
+
+
+.map-controls button {
+
+    padding: 10px 13px;
+
+    border-radius: 9px;
+
+    color: var(--white);
+
+    background:
+        rgba(16, 37, 27, 0.94);
+
+    font-size: 12px;
+
+    font-weight: 800;
+
+    box-shadow:
+        0 5px 15px rgba(0, 0, 0, 0.2);
+
+    transition:
+        background 0.15s ease;
+}
+
+
+.map-controls button:hover {
+
+    background:
+        var(--forest-green);
+}
+
+
+/* =========================================================
+   14. TABLET
+========================================================= */
+
+@media (max-width: 900px) {
+
+    .brand {
+
+        min-width: 210px;
+    }
+
+
+    .nav-button {
+
+        padding: 0 10px;
+
+        font-size: 12px;
+    }
+
+
+    .property-panel {
+
+        width: 255px;
+    }
+}
+
+
+/* =========================================================
+   15. MOBILE
+========================================================= */
+
+@media (max-width: 760px) {
+
+    .topbar {
+
+        height: 64px;
+
+        padding:
+            8px 11px;
+    }
+
+
+    .brand {
+
+        min-width: 0;
+
+        gap: 7px;
+    }
+
+
+    .brand-mark {
+
+        width: 34px;
+        height: 34px;
+
+        font-size: 23px;
+    }
+
+
+    .brand-text h1 {
+
+        font-size: 19px;
+    }
+
+
+    .brand-text p {
+
+        font-size: 9px;
+    }
+
+
+    .main-nav {
+
+        display: none;
+    }
+
+
+    .mobile-menu {
+
+        display: block;
+    }
+
+
+    .app {
+
+        height:
+            calc(100vh - 64px);
+    }
+
+
+    .map-tools {
+
+        top: 10px;
+        left: 10px;
+
+        width: 65px;
+
+        padding: 5px;
+    }
+
+
+    .map-tool {
+
+        min-height: 55px;
+
+        margin-bottom: 4px;
+    }
+
+
+    .map-tool span {
+
+        font-size: 18px;
+    }
+
+
+    .map-tool small {
+
+        font-size: 9px;
+    }
+
+
+    .property-panel {
+
+        top: auto;
+
+        left: 10px;
+        right: 10px;
+        bottom: 10px;
+
+        width: auto;
+
+        max-height: 43%;
+    }
+
+
+    .property-panel .panel-section:first-child {
+
+        display: none;
+    }
+
+
+    .map-controls {
+
+        top: 10px;
+        left: 84px;
+
+        bottom: auto;
+    }
+
+
+    .map-controls button {
+
+        padding: 8px 10px;
+
+        font-size: 10px;
+    }
+}
