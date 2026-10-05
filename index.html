@@ -163,44 +163,60 @@
              PROPERTY PANEL
         ========================== -->
 
-        <aside class="property-panel">
+       <aside class="property-panel">
 
-            <div class="panel-section">
+    <div class="panel-header">
+        <h2>Current Property</h2>
+        <p>Manage your hunting property</p>
+    </div>
 
-                <h2>
-                    My Property
-                </h2>
+    <div class="property-stats">
 
-                <p class="panel-subtitle">
-                    Start planning your hunting property.
-                </p>
+        <div class="stat-card">
+            <span class="stat-number" id="standCount">0</span>
+            <span class="stat-label">Stands</span>
+        </div>
 
-            </div>
+        <div class="stat-card">
+            <span class="stat-number" id="cameraCount">0</span>
+            <span class="stat-label">Cameras</span>
+        </div>
 
+        <div class="stat-card">
+            <span class="stat-number" id="foodCount">0</span>
+            <span class="stat-label">Food Plots</span>
+        </div>
 
-            <div class="panel-section">
+        <div class="stat-card">
+            <span class="stat-number" id="waterCount">0</span>
+            <span class="stat-label">Water</span>
+        </div>
 
-                <button class="primary-action">
-                    🦌 Add Stand
-                </button>
+    </div>
 
-                <button class="secondary-action">
-                    🌱 Add Food Plot
-                </button>
+    <div class="property-info">
+        <h3>Property Information</h3>
 
-                <button class="secondary-action">
-                    📷 Add Trail Camera
-                </button>
+        <div class="info-row">
+            <span>Boundary</span>
+            <strong id="boundaryStatus">Not Set</strong>
+        </div>
 
-                <button class="secondary-action">
-                    💧 Add Water
-                </button>
+        <div class="info-row">
+            <span>Marked Locations</span>
+            <strong id="locationCount">0</strong>
+        </div>
+    </div>
 
-                <button class="secondary-action">
-                    ⬚ Draw Property Boundary
-                </button>
+    <div class="analysis-panel">
+        <h3>Hunt Analysis</h3>
+        <p>
+            Mark your property, stands, food, water and cameras.
+            Hunting-location analysis will appear here.
+        </p>
+    </div>
 
-            </div>
+</aside>
 
 
             <!-- Property statistics -->
