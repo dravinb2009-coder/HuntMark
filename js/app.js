@@ -14,11 +14,13 @@ const HuntMark = {
     }
 };
 
+let map;
+let standardLayer;
+let satelliteLayer;
+
 // ============================================
 // MAP
 // ============================================
-
-let map;
 
 function initializeMap() {
     const mapElement = document.getElementById("map");
@@ -28,19 +30,68 @@ function initializeMap() {
         return;
     }
 
-    // Start centered around Morristown, Tennessee.
     map = L.map("map", {
         zoomControl: true
     }).setView([36.2140, -83.2949], 13);
 
-    // Standard map
-    L.tileLayer(
+    standardLayer = L.tileLayer(
         "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         {
             maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors'
+            attribution: "&copy; OpenStreetMap contributors"
         }
-    ).addTo(map);
+    );
+
+    satelliteLayer = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+            maxZoom: 19,
+            attribution: "Tiles &copy; Esri"
+        }
+    );
+
+    standardLayer.addTo(map);
+
+    // Map clicking
+    map.on("click", function(event) {
+        if (!HuntMark.activeTool) {
+            return;
+        }
+
+        const lat = event.latlng.lat;
+        const lng = event.latlng.lng;
+
+        switch (HuntMark.activeTool) {
+
+            case "stand":
+                addMapMarker(lat, lng, "🦌", "Stand", "stands");
+                break;
+
+            case "camera":
+                addMapMarker(lat, lng, "📷", "Trail Camera", "cameras");
+                break;
+
+            case "food":
+                addMapMarker(lat, lng, "🌱", "Food Plot", "food");
+                break;
+
+            case "water":
+                addMapMarker(lat, lng, "💧", "Water Source", "water");
+                break;
+
+            case "trail":
+                showMessage(
+                    `Trail point placed at ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+                );
+                break;
+
+            case "boundary":
+                showMessage(
+                    `Boundary point placed at ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+                );
+                break;
+        }
+    });
 
     console.log("HuntMark map initialized.");
 }
@@ -80,7 +131,7 @@ function activateTool(tool) {
         toolButtons[tool].classList.add("active");
     }
 
-    showMessage(toolMessages[tool] || "Tool activated.");
+    showMessage(toolMessages[tool]);
 }
 
 function deactivateTool() {
@@ -94,20 +145,25 @@ function deactivateTool() {
 }
 
 Object.entries(toolButtons).forEach(([tool, button]) => {
-    if (!button) return;
 
-    button.addEventListener("click", () => {
+    if (!button) {
+        return;
+    }
+
+    button.addEventListener("click", function() {
+
         if (HuntMark.activeTool === tool) {
             deactivateTool();
             showMessage("Tool deactivated.");
         } else {
             activateTool(tool);
         }
+
     });
 });
 
 // ============================================
-// PROPERTY ACTIONS
+// PROPERTY ACTION BUTTONS
 // ============================================
 
 const propertyActions = {
@@ -119,31 +175,31 @@ const propertyActions = {
 };
 
 if (propertyActions.addStand) {
-    propertyActions.addStand.addEventListener("click", () => {
+    propertyActions.addStand.addEventListener("click", function() {
         activateTool("stand");
     });
 }
 
 if (propertyActions.addFood) {
-    propertyActions.addFood.addEventListener("click", () => {
+    propertyActions.addFood.addEventListener("click", function() {
         activateTool("food");
     });
 }
 
 if (propertyActions.addCamera) {
-    propertyActions.addCamera.addEventListener("click", () => {
+    propertyActions.addCamera.addEventListener("click", function() {
         activateTool("camera");
     });
 }
 
 if (propertyActions.addWater) {
-    propertyActions.addWater.addEventListener("click", () => {
+    propertyActions.addWater.addEventListener("click", function() {
         activateTool("water");
     });
 }
 
 if (propertyActions.drawBoundary) {
-    propertyActions.drawBoundary.addEventListener("click", () => {
+    propertyActions.drawBoundary.addEventListener("click", function() {
         activateTool("boundary");
     });
 }
@@ -155,22 +211,35 @@ if (propertyActions.drawBoundary) {
 const navButtons = document.querySelectorAll(".nav-btn");
 
 navButtons.forEach(button => {
-    button.addEventListener("click", () => {
-        navButtons.forEach(btn => btn.classList.remove("active"));
+
+    button.addEventListener("click", function() {
+
+        navButtons.forEach(btn => {
+            btn.classList.remove("active");
+        });
+
         button.classList.add("active");
 
         const section = button.textContent.trim();
 
         if (section === "Map") {
             showMessage("Map view active.");
-        } else if (section === "Property") {
+        }
+
+        if (section === "Property") {
             showMessage("Property tools active.");
-        } else if (section === "Weather") {
+        }
+
+        if (section === "Weather") {
             showMessage("Weather tools coming next.");
-        } else if (section === "Reports") {
+        }
+
+        if (section === "Reports") {
             showMessage("Reports coming soon.");
         }
+
     });
+
 });
 
 // ============================================
@@ -181,49 +250,23 @@ const menuButton = document.getElementById("menuButton");
 const nav = document.querySelector(".main-nav");
 
 if (menuButton && nav) {
-    menuButton.addEventListener("click", () => {
+
+    menuButton.addEventListener("click", function() {
         nav.classList.toggle("open");
     });
+
 }
 
 // ============================================
-// MAP CONTROLS
+// LOCATION
 // ============================================
 
 const locationButton = document.getElementById("locationButton");
-const satelliteButton = document.getElementById("satelliteButton");
-
-let standardLayer;
-let satelliteLayer;
-
-function setupMapLayers() {
-    if (!map) return;
-
-    standardLayer = L.tileLayer(
-        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors'
-        }
-    );
-
-    satelliteLayer = L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        {
-            maxZoom: 19,
-            attribution: "Tiles &copy; Esri"
-        }
-    );
-
-    map.eachLayer(layer => {
-        map.removeLayer(layer);
-    });
-
-    standardLayer.addTo(map);
-}
 
 if (locationButton) {
-    locationButton.addEventListener("click", () => {
+
+    locationButton.addEventListener("click", function() {
+
         if (!navigator.geolocation) {
             showMessage("Location services are not supported.");
             return;
@@ -232,11 +275,16 @@ if (locationButton) {
         showMessage("Finding your location...");
 
         navigator.geolocation.getCurrentPosition(
-            position => {
+
+            function(position) {
+
                 const latitude = position.coords.latitude;
                 const longitude = position.coords.longitude;
 
-                map.setView([latitude, longitude], 16);
+                map.setView(
+                    [latitude, longitude],
+                    16
+                );
 
                 L.marker([latitude, longitude])
                     .addTo(map)
@@ -245,64 +293,91 @@ if (locationButton) {
 
                 showMessage("Map centered on your location.");
             },
-            () => {
+
+            function() {
                 showMessage("Unable to access your location.");
             },
+
             {
                 enableHighAccuracy: true,
                 timeout: 10000,
                 maximumAge: 30000
             }
+
         );
+
     });
+
 }
 
+// ============================================
+// SATELLITE
+// ============================================
+
+const satelliteButton = document.getElementById("satelliteButton");
+
 if (satelliteButton) {
-    satelliteButton.addEventListener("click", () => {
-        if (!map || !standardLayer || !satelliteLayer) return;
+
+    satelliteButton.addEventListener("click", function() {
+
+        if (!map) {
+            return;
+        }
 
         if (!HuntMark.satelliteMode) {
+
             map.removeLayer(standardLayer);
             satelliteLayer.addTo(map);
 
             HuntMark.satelliteMode = true;
+
             satelliteButton.textContent = "🗺️ Map";
 
             showMessage("Satellite imagery enabled.");
+
         } else {
+
             map.removeLayer(satelliteLayer);
             standardLayer.addTo(map);
 
             HuntMark.satelliteMode = false;
+
             satelliteButton.textContent = "🛰️ Satellite";
 
             showMessage("Standard map enabled.");
+
         }
+
     });
+
 }
 
 // ============================================
-// MAP TOOL CLICKING
+// ADD MAP MARKER
 // ============================================
 
-// <Will be added later>
+function addMapMarker(lat, lng, icon, name, countType) {
 
-// ============================================
-// MAP MARKERS
-// ============================================
-
-function addMapMarker(lat, lng, icon, name, type) {
     const markerIcon = L.divIcon({
+
         className: "huntmark-marker",
+
         html: `<span>${icon}</span>`,
+
         iconSize: [40, 40],
+
         iconAnchor: [20, 20],
+
         popupAnchor: [0, -20]
+
     });
 
-    const marker = L.marker([lat, lng], {
-        icon: markerIcon
-    }).addTo(map);
+    const marker = L.marker(
+        [lat, lng],
+        {
+            icon: markerIcon
+        }
+    ).addTo(map);
 
     marker.bindPopup(`
         <div class="marker-popup">
@@ -314,7 +389,7 @@ function addMapMarker(lat, lng, icon, name, type) {
         </div>
     `);
 
-    HuntMark.counts[type + "s"]++;
+    HuntMark.counts[countType]++;
 
     updateCounts();
 
@@ -324,10 +399,11 @@ function addMapMarker(lat, lng, icon, name, type) {
 }
 
 // ============================================
-// COUNTERS
+// UPDATE COUNTERS
 // ============================================
 
 function updateCounts() {
+
     const standCount = document.getElementById("standCount");
     const cameraCount = document.getElementById("cameraCount");
     const foodCount = document.getElementById("foodCount");
@@ -355,44 +431,52 @@ function updateCounts() {
 // ============================================
 
 function showMessage(message) {
-    const existingMessage = document.querySelector(".huntmark-message");
+
+    const existingMessage =
+        document.querySelector(".huntmark-message");
 
     if (existingMessage) {
         existingMessage.remove();
     }
 
-    const messageElement = document.createElement("div");
+    const messageElement =
+        document.createElement("div");
 
-    messageElement.className = "huntmark-message";
-    messageElement.textContent = message;
+    messageElement.className =
+        "huntmark-message";
 
-    document.body.appendChild(messageElement);
+    messageElement.textContent =
+        message;
 
-    setTimeout(() => {
+    document.body.appendChild(
+        messageElement
+    );
+
+    setTimeout(function() {
         messageElement.classList.add("show");
     }, 10);
 
-    setTimeout(() => {
+    setTimeout(function() {
+
         messageElement.classList.remove("show");
 
-        setTimeout(() => {
+        setTimeout(function() {
             messageElement.remove();
         }, 300);
+
     }, 2500);
 }
 
 // ============================================
-// START APPLICATION
+// START HUNTMARK
 // ============================================
 
-document.addEventListener("DOMContentLoaded", () => {
-    initializeMap();
+document.addEventListener("DOMContentLoaded", function() {
 
-    if (map) {
-        setupMapLayers();
-    }
+    initializeMap();
 
     updateCounts();
 
     console.log("HuntMark is ready.");
+
 });
