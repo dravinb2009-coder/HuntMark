@@ -1,537 +1,398 @@
-/* =========================================================
-   HUNTMARK — APPLICATION LOGIC
-   Hunt smarter. Know your land.
-========================================================= */
-
-
-/* =========================================================
-   1. APPLICATION STATE
-========================================================= */
+// ============================================
+// HUNTMARK - Main Application
+// ============================================
 
 const HuntMark = {
-
     activeTool: null,
+    satelliteMode: false,
 
     counts: {
-
         stands: 0,
-
         cameras: 0,
-
-        foodPlots: 0,
-
+        food: 0,
         water: 0
-
     }
-
 };
 
+// ============================================
+// MAP
+// ============================================
 
-/* =========================================================
-   2. ELEMENTS
-========================================================= */
+let map;
 
-const elements = {
+function initializeMap() {
+    const mapElement = document.getElementById("map");
 
-    mapTools:
-        document.querySelectorAll(".map-tool"),
-
-    navButtons:
-        document.querySelectorAll(".nav-button"),
-
-    mobileMenu:
-        document.querySelector(".mobile-menu"),
-
-    mainNav:
-        document.querySelector(".main-nav"),
-
-    standCount:
-        document.getElementById("standCount"),
-
-    cameraCount:
-        document.getElementById("cameraCount"),
-
-    foodCount:
-        document.getElementById("foodCount"),
-
-    waterCount:
-        document.getElementById("waterCount"),
-
-    locationButton:
-        document.getElementById("locationButton"),
-
-    satelliteButton:
-        document.getElementById("satelliteButton")
-
-};
-
-
-/* =========================================================
-   3. TOOL TYPES
-========================================================= */
-
-const toolTypes = {
-
-    stand: {
-
-        name: "Stand",
-
-        message:
-            "Click the map to place a hunting stand."
-
-    },
-
-    camera: {
-
-        name: "Trail Camera",
-
-        message:
-            "Click the map to place a trail camera."
-
-    },
-
-    food: {
-
-        name: "Food Plot",
-
-        message:
-            "Click the map to place a food plot."
-
-    },
-
-    water: {
-
-        name: "Water Source",
-
-        message:
-            "Click the map to mark a water source."
-
-    },
-
-    trail: {
-
-        name: "Trail",
-
-        message:
-            "Click the map to begin marking a trail."
-
-    },
-
-    boundary: {
-
-        name: "Property Boundary",
-
-        message:
-            "Click around your property to create a boundary."
-
+    if (!mapElement || typeof L === "undefined") {
+        console.error("HuntMark: Leaflet map could not be initialized.");
+        return;
     }
 
-};
+    // Start centered around Morristown, Tennessee.
+    map = L.map("map", {
+        zoomControl: true
+    }).setView([36.2140, -83.2949], 13);
 
+    // Standard map
+    L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }
+    ).addTo(map);
 
-/* =========================================================
-   4. TOOL SELECTION
-========================================================= */
-
-function activateTool(toolName) {
-
-    HuntMark.activeTool = toolName;
-
-
-    elements.mapTools.forEach(button => {
-
-        const isActive =
-            button.id === `${toolName}Tool`;
-
-        button.classList.toggle(
-            "active",
-            isActive
-        );
-
-    });
-
-
-    const tool =
-        toolTypes[toolName];
-
-
-    if (tool) {
-
-        showMessage(tool.message);
-
-    }
-
+    console.log("HuntMark map initialized.");
 }
 
+// ============================================
+// TOOL BUTTONS
+// ============================================
+
+const toolButtons = {
+    stand: document.getElementById("standTool"),
+    camera: document.getElementById("cameraTool"),
+    food: document.getElementById("foodTool"),
+    water: document.getElementById("waterTool"),
+    trail: document.getElementById("trailTool"),
+    boundary: document.getElementById("boundaryTool")
+};
+
+const toolMessages = {
+    stand: "Stand placement mode activated.",
+    camera: "Trail camera placement mode activated.",
+    food: "Food plot placement mode activated.",
+    water: "Water source placement mode activated.",
+    trail: "Trail planning mode activated.",
+    boundary: "Property boundary mode activated."
+};
+
+function activateTool(tool) {
+    HuntMark.activeTool = tool;
+
+    Object.values(toolButtons).forEach(button => {
+        if (button) {
+            button.classList.remove("active");
+        }
+    });
+
+    if (toolButtons[tool]) {
+        toolButtons[tool].classList.add("active");
+    }
+
+    showMessage(toolMessages[tool] || "Tool activated.");
+}
 
 function deactivateTool() {
-
     HuntMark.activeTool = null;
 
-
-    elements.mapTools.forEach(button => {
-
-        button.classList.remove(
-            "active"
-        );
-
+    Object.values(toolButtons).forEach(button => {
+        if (button) {
+            button.classList.remove("active");
+        }
     });
-
 }
 
+Object.entries(toolButtons).forEach(([tool, button]) => {
+    if (!button) return;
 
-/* =========================================================
-   5. MAP TOOL BUTTONS
-========================================================= */
+    button.addEventListener("click", () => {
+        if (HuntMark.activeTool === tool) {
+            deactivateTool();
+            showMessage("Tool deactivated.");
+        } else {
+            activateTool(tool);
+        }
+    });
+});
 
-document
-    .getElementById("standTool")
-    .addEventListener("click", () => {
+// ============================================
+// PROPERTY ACTIONS
+// ============================================
 
+const propertyActions = {
+    addStand: document.getElementById("addStand"),
+    addFood: document.getElementById("addFood"),
+    addCamera: document.getElementById("addCamera"),
+    addWater: document.getElementById("addWater"),
+    drawBoundary: document.getElementById("drawBoundary")
+};
+
+if (propertyActions.addStand) {
+    propertyActions.addStand.addEventListener("click", () => {
         activateTool("stand");
-
     });
+}
 
-
-document
-    .getElementById("cameraTool")
-    .addEventListener("click", () => {
-
-        activateTool("camera");
-
-    });
-
-
-document
-    .getElementById("foodTool")
-    .addEventListener("click", () => {
-
+if (propertyActions.addFood) {
+    propertyActions.addFood.addEventListener("click", () => {
         activateTool("food");
-
     });
+}
 
+if (propertyActions.addCamera) {
+    propertyActions.addCamera.addEventListener("click", () => {
+        activateTool("camera");
+    });
+}
 
-document
-    .getElementById("waterTool")
-    .addEventListener("click", () => {
-
+if (propertyActions.addWater) {
+    propertyActions.addWater.addEventListener("click", () => {
         activateTool("water");
-
     });
+}
 
-
-document
-    .getElementById("trailTool")
-    .addEventListener("click", () => {
-
-        activateTool("trail");
-
-    });
-
-
-document
-    .getElementById("boundaryTool")
-    .addEventListener("click", () => {
-
+if (propertyActions.drawBoundary) {
+    propertyActions.drawBoundary.addEventListener("click", () => {
         activateTool("boundary");
+    });
+}
 
+// ============================================
+// NAVIGATION
+// ============================================
+
+const navButtons = document.querySelectorAll(".nav-btn");
+
+navButtons.forEach(button => {
+    button.addEventListener("click", () => {
+        navButtons.forEach(btn => btn.classList.remove("active"));
+        button.classList.add("active");
+
+        const section = button.textContent.trim();
+
+        if (section === "Map") {
+            showMessage("Map view active.");
+        } else if (section === "Property") {
+            showMessage("Property tools active.");
+        } else if (section === "Weather") {
+            showMessage("Weather tools coming next.");
+        } else if (section === "Reports") {
+            showMessage("Reports coming soon.");
+        }
+    });
+});
+
+// ============================================
+// MOBILE MENU
+// ============================================
+
+const menuButton = document.getElementById("menuButton");
+const nav = document.querySelector(".main-nav");
+
+if (menuButton && nav) {
+    menuButton.addEventListener("click", () => {
+        nav.classList.toggle("open");
+    });
+}
+
+// ============================================
+// MAP CONTROLS
+// ============================================
+
+const locationButton = document.getElementById("locationButton");
+const satelliteButton = document.getElementById("satelliteButton");
+
+let standardLayer;
+let satelliteLayer;
+
+function setupMapLayers() {
+    if (!map) return;
+
+    standardLayer = L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }
+    );
+
+    satelliteLayer = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+            maxZoom: 19,
+            attribution: "Tiles &copy; Esri"
+        }
+    );
+
+    map.eachLayer(layer => {
+        map.removeLayer(layer);
     });
 
+    standardLayer.addTo(map);
+}
 
-/* =========================================================
-   6. PROPERTY ACTION BUTTONS
-========================================================= */
-
-const primaryAction =
-    document.querySelector(".primary-action");
-
-
-primaryAction.addEventListener(
-    "click",
-    () => {
-
-        activateTool("stand");
-
-    }
-);
-
-
-const secondaryActions =
-    document.querySelectorAll(
-        ".secondary-action"
-    );
-
-
-secondaryActions.forEach(button => {
-
-    button.addEventListener(
-        "click",
-        () => {
-
-            const text =
-                button.textContent.toLowerCase();
-
-
-            if (text.includes("food")) {
-
-                activateTool("food");
-
-            }
-
-            else if (text.includes("camera")) {
-
-                activateTool("camera");
-
-            }
-
-            else if (text.includes("water")) {
-
-                activateTool("water");
-
-            }
-
-            else if (text.includes("boundary")) {
-
-                activateTool("boundary");
-
-            }
-
-        }
-    );
-
-});
-
-
-/* =========================================================
-   7. NAVIGATION
-========================================================= */
-
-elements.navButtons.forEach(button => {
-
-    button.addEventListener(
-        "click",
-        () => {
-
-            elements.navButtons.forEach(
-                navButton => {
-
-                    navButton.classList.remove(
-                        "active"
-                    );
-
-                }
-            );
-
-
-            button.classList.add(
-                "active"
-            );
-
-
-            const section =
-                button.textContent.trim();
-
-
-            showMessage(
-                `${section} section selected.`
-            );
-
-        }
-    );
-
-});
-
-
-/* =========================================================
-   8. MOBILE MENU
-========================================================= */
-
-elements.mobileMenu.addEventListener(
-    "click",
-    () => {
-
-        const isVisible =
-            elements.mainNav.style.display ===
-            "flex";
-
-
-        if (isVisible) {
-
-            elements.mainNav.style.display =
-                "";
-
+if (locationButton) {
+    locationButton.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+            showMessage("Location services are not supported.");
+            return;
         }
 
-        else {
+        showMessage("Finding your location...");
 
-            elements.mainNav.style.display =
-                "flex";
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
 
-            elements.mainNav.style.position =
-                "absolute";
+                map.setView([latitude, longitude], 16);
 
-            elements.mainNav.style.top =
-                "64px";
+                L.marker([latitude, longitude])
+                    .addTo(map)
+                    .bindPopup("<strong>You are here</strong>")
+                    .openPopup();
 
-            elements.mainNav.style.left =
-                "0";
-
-            elements.mainNav.style.right =
-                "0";
-
-            elements.mainNav.style.height =
-                "auto";
-
-            elements.mainNav.style.padding =
-                "10px";
-
-            elements.mainNav.style.flexDirection =
-                "column";
-
-            elements.mainNav.style.background =
-                "#10251B";
-
-        }
-
-    }
-);
-
-
-/* =========================================================
-   9. MAP BUTTONS
-========================================================= */
-
-elements.locationButton.addEventListener(
-    "click",
-    () => {
-
-        showMessage(
-            "Location services will be connected to the HuntMark map next."
+                showMessage("Map centered on your location.");
+            },
+            () => {
+                showMessage("Unable to access your location.");
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 30000
+            }
         );
+    });
+}
 
+if (satelliteButton) {
+    satelliteButton.addEventListener("click", () => {
+        if (!map || !standardLayer || !satelliteLayer) return;
+
+        if (!HuntMark.satelliteMode) {
+            map.removeLayer(standardLayer);
+            satelliteLayer.addTo(map);
+
+            HuntMark.satelliteMode = true;
+            satelliteButton.textContent = "🗺️ Map";
+
+            showMessage("Satellite imagery enabled.");
+        } else {
+            map.removeLayer(satelliteLayer);
+            standardLayer.addTo(map);
+
+            HuntMark.satelliteMode = false;
+            satelliteButton.textContent = "🛰️ Satellite";
+
+            showMessage("Standard map enabled.");
+        }
+    });
+}
+
+// ============================================
+// MAP TOOL CLICKING
+// ============================================
+
+// <Will be added later>
+
+// ============================================
+// MAP MARKERS
+// ============================================
+
+function addMapMarker(lat, lng, icon, name, type) {
+    const markerIcon = L.divIcon({
+        className: "huntmark-marker",
+        html: `<span>${icon}</span>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20]
+    });
+
+    const marker = L.marker([lat, lng], {
+        icon: markerIcon
+    }).addTo(map);
+
+    marker.bindPopup(`
+        <div class="marker-popup">
+            <strong>${name}</strong>
+            <br>
+            <small>
+                ${lat.toFixed(5)}, ${lng.toFixed(5)}
+            </small>
+        </div>
+    `);
+
+    HuntMark.counts[type + "s"]++;
+
+    updateCounts();
+
+    showMessage(`${name} added to your map.`);
+
+    deactivateTool();
+}
+
+// ============================================
+// COUNTERS
+// ============================================
+
+function updateCounts() {
+    const standCount = document.getElementById("standCount");
+    const cameraCount = document.getElementById("cameraCount");
+    const foodCount = document.getElementById("foodCount");
+    const waterCount = document.getElementById("waterCount");
+
+    if (standCount) {
+        standCount.textContent = HuntMark.counts.stands;
     }
-);
 
-
-elements.satelliteButton.addEventListener(
-    "click",
-    () => {
-
-        showMessage(
-            "Satellite imagery will be connected to the map next."
-        );
-
+    if (cameraCount) {
+        cameraCount.textContent = HuntMark.counts.cameras;
     }
-);
 
+    if (foodCount) {
+        foodCount.textContent = HuntMark.counts.food;
+    }
 
-/* =========================================================
-   10. MESSAGE SYSTEM
-========================================================= */
+    if (waterCount) {
+        waterCount.textContent = HuntMark.counts.water;
+    }
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
 
 function showMessage(message) {
+    const existingMessage = document.querySelector(".huntmark-message");
 
-    let messageBox =
-        document.getElementById(
-            "huntmarkMessage"
-        );
-
-
-    if (!messageBox) {
-
-        messageBox =
-            document.createElement("div");
-
-        messageBox.id =
-            "huntmarkMessage";
-
-
-        messageBox.style.position =
-            "fixed";
-
-        messageBox.style.zIndex =
-            "5000";
-
-        messageBox.style.left =
-            "50%";
-
-        messageBox.style.bottom =
-            "25px";
-
-        messageBox.style.transform =
-            "translateX(-50%)";
-
-        messageBox.style.padding =
-            "10px 16px";
-
-        messageBox.style.borderRadius =
-            "999px";
-
-        messageBox.style.background =
-            "#10251B";
-
-        messageBox.style.color =
-            "#FFFFFF";
-
-        messageBox.style.fontSize =
-            "13px";
-
-        messageBox.style.fontWeight =
-            "750";
-
-        messageBox.style.boxShadow =
-            "0 8px 25px rgba(0,0,0,.25)";
-
-        messageBox.style.pointerEvents =
-            "none";
-
-
-        document.body.appendChild(
-            messageBox
-        );
-
+    if (existingMessage) {
+        existingMessage.remove();
     }
 
+    const messageElement = document.createElement("div");
 
-    messageBox.textContent =
-        message;
+    messageElement.className = "huntmark-message";
+    messageElement.textContent = message;
 
+    document.body.appendChild(messageElement);
 
-    messageBox.style.opacity =
-        "1";
+    setTimeout(() => {
+        messageElement.classList.add("show");
+    }, 10);
 
+    setTimeout(() => {
+        messageElement.classList.remove("show");
 
-    clearTimeout(
-        window.huntmarkMessageTimer
-    );
-
-
-    window.huntmarkMessageTimer =
         setTimeout(() => {
-
-            messageBox.style.opacity =
-                "0";
-
-        }, 2500);
-
+            messageElement.remove();
+        }, 300);
+    }, 2500);
 }
 
+// ============================================
+// START APPLICATION
+// ============================================
 
-/* =========================================================
-   11. INITIALIZE
-========================================================= */
+document.addEventListener("DOMContentLoaded", () => {
+    initializeMap();
 
-function initializeHuntMark() {
+    if (map) {
+        setupMapLayers();
+    }
 
-    console.log(
-        "HuntMark initialized."
-    );
+    updateCounts();
 
-    console.log(
-        "Hunt smarter. Know your land."
-    );
-
-}
-
-
-initializeHuntMark();
+    console.log("HuntMark is ready.");
+});
