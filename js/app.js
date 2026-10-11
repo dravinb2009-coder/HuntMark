@@ -1,6 +1,9 @@
-// ============================================
-// HUNTMARK - Main Application
-// ============================================
+
+/* ============================================
+   HUNTMARK - Map, Markers, Boundaries & Saving
+   ============================================ */
+
+const STORAGE_KEY = "huntmark-map-data-v1";
 
 const HuntMark = {
     activeTool: null,
@@ -13,27 +16,66 @@ const HuntMark = {
         water: 0
     },
 
+    locations: [],
+    nextId: 1,
+
     boundaryPoints: [],
     boundaryMarkers: [],
     boundaryLine: null,
-    boundaryPolygon: null
+    boundaryPolygon: null,
+    savedBoundary: [],
+
+    trailPoints: [],
+    trailMarkers: [],
+    trailLine: null
 };
 
 let map;
 let standardLayer;
 let satelliteLayer;
 
+const markerTypes = {
+    stand: {
+        icon: "🦌",
+        name: "Stand",
+        count: "stands"
+    },
+    camera: {
+        icon: "📷",
+        name: "Trail Camera",
+        count: "cameras"
+    },
+    food: {
+        icon: "🌱",
+        name: "Food Plot",
+        count: "food"
+    },
+    water: {
+        icon: "💧",
+        name: "Water Source",
+        count: "water"
+    }
+};
 
-// ============================================
-// MAP
-// ============================================
+const toolButtons = {
+    stand: document.getElementById("standTool"),
+    camera: document.getElementById("cameraTool"),
+    food: document.getElementById("foodTool"),
+    water: document.getElementById("waterTool"),
+    trail: document.getElementById("trailTool"),
+    boundary: document.getElementById("boundaryTool")
+};
+
+/* ============================================
+   MAP INITIALIZATION
+   ============================================ */
 
 function initializeMap() {
-
     const mapElement = document.getElementById("map");
 
     if (!mapElement || typeof L === "undefined") {
-        console.error("HuntMark: Leaflet map could not be initialized.");
+        console.error("HuntMark: Map or Leaflet is unavailable.");
+        showMessage("The map could not load. Refresh and try again.");
         return;
     }
 
@@ -59,946 +101,878 @@ function initializeMap() {
 
     standardLayer.addTo(map);
 
+    map.on("click", handleMapClick);
 
-    // ========================================
-    // MAP CLICK
-    // ========================================
+    loadSavedData();
+    renderSavedBoundary();
+    renderSavedLocations();
 
-    map.on("click", function(event) {
+    updateCounts();
+    updateBoundaryStatus();
 
-        if (!HuntMark.activeTool) {
+    console.log("HuntMark is ready.");
+}
+
+/* ============================================
+   MAP CLICK HANDLING
+   ============================================ */
+
+function handleMapClick(event) {
+    const tool = HuntMark.activeTool;
+
+    if (!tool) return;
+
+    const lat = event.latlng.lat;
+    const lng = event.latlng.lng;
+
+    if (["stand", "camera", "food", "water"].includes(tool)) {
+        if (HuntMark.savedBoundary.length >= 3 &&
+            !pointInsideBoundary(lat, lng)) {
+            showMessage("Place this location inside your property boundary.");
             return;
         }
 
-        const lat = event.latlng.lat;
-        const lng = event.latlng.lng;
-
-
-        switch (HuntMark.activeTool) {
-
-            case "stand":
-
-                addMapMarker(
-                    lat,
-                    lng,
-                    "🦌",
-                    "Stand",
-                    "stands"
-                );
-
-                break;
-
-
-            case "camera":
-
-                addMapMarker(
-                    lat,
-                    lng,
-                    "📷",
-                    "Trail Camera",
-                    "cameras"
-                );
-
-                break;
-
-
-            case "food":
-
-                addMapMarker(
-                    lat,
-                    lng,
-                    "🌱",
-                    "Food Plot",
-                    "food"
-                );
-
-                break;
-
-
-            case "water":
-
-                addMapMarker(
-                    lat,
-                    lng,
-                    "💧",
-                    "Water Source",
-                    "water"
-                );
-
-                break;
-
-
-            case "trail":
-
-                showMessage(
-                    `Trail point placed at ${lat.toFixed(5)}, ${lng.toFixed(5)}`
-                );
-
-                break;
-
-
-            case "boundary":
-
-                addBoundaryPoint(
-                    lat,
-                    lng
-                );
-
-                break;
-        }
-
-    });
-
-
-    console.log("HuntMark map initialized.");
-}
-
-
-// ============================================
-// TOOL BUTTONS
-// ============================================
-
-const toolButtons = {
-    stand: document.getElementById("standTool"),
-    camera: document.getElementById("cameraTool"),
-    food: document.getElementById("foodTool"),
-    water: document.getElementById("waterTool"),
-    trail: document.getElementById("trailTool"),
-    boundary: document.getElementById("boundaryTool")
-};
-
-
-const toolMessages = {
-
-    stand:
-        "Stand placement mode activated. Click the map to place a stand.",
-
-    camera:
-        "Trail camera mode activated. Click the map to place a camera.",
-
-    food:
-        "Food plot mode activated. Click the map to place a food plot.",
-
-    water:
-        "Water source mode activated. Click the map to mark water.",
-
-    trail:
-        "Trail planning mode activated.",
-
-    boundary:
-        "Boundary mode activated. Click around your property to draw the boundary."
-};
-
-
-function activateTool(tool) {
-
-    HuntMark.activeTool = tool;
-
-    Object.values(toolButtons).forEach(button => {
-
-        if (button) {
-            button.classList.remove("active");
-        }
-
-    });
-
-
-    if (toolButtons[tool]) {
-        toolButtons[tool].classList.add("active");
-    }
-
-
-    if (tool === "boundary") {
-
-        startBoundary();
-
-    } else {
-
-        removeBoundaryControls();
-
-    }
-
-
-    showMessage(toolMessages[tool]);
-}
-
-
-function deactivateTool() {
-
-    HuntMark.activeTool = null;
-
-    Object.values(toolButtons).forEach(button => {
-
-        if (button) {
-            button.classList.remove("active");
-        }
-
-    });
-
-}
-
-
-// ============================================
-// CONNECT TOOL BUTTONS
-// ============================================
-
-Object.entries(toolButtons).forEach(([tool, button]) => {
-
-    if (!button) {
+        const details = markerTypes[tool];
+        addLocation(lat, lng, tool, details);
+        deactivateTool();
         return;
     }
 
-    button.addEventListener("click", function() {
+    if (tool === "boundary") {
+        addBoundaryPoint(lat, lng);
+        return;
+    }
 
+    if (tool === "trail") {
+        addTrailPoint(lat, lng);
+    }
+}
+
+/* ============================================
+   TOOL ACTIVATION
+   ============================================ */
+
+function activateTool(tool) {
+    if (!toolButtons[tool]) return;
+
+    // Keep an unfinished drawing from being accidentally abandoned.
+    if (HuntMark.activeTool === "boundary" && tool !== "boundary") {
+        showMessage("Finish or cancel your boundary first.");
+        return;
+    }
+
+    if (HuntMark.activeTool === "trail" && tool !== "trail") {
+        showMessage("Finish or cancel your trail first.");
+        return;
+    }
+
+    deactivateTool(false);
+
+    HuntMark.activeTool = tool;
+    toolButtons[tool].classList.add("active");
+
+    if (tool === "boundary") {
+        startBoundary();
+        return;
+    }
+
+    if (tool === "trail") {
+        startTrail();
+        return;
+    }
+
+    showMessage(
+        `Click the map to place a ${markerTypes[tool].name.toLowerCase()}.`
+    );
+}
+
+function deactivateTool(removeControls = true) {
+    HuntMark.activeTool = null;
+
+    Object.values(toolButtons).forEach(button => {
+        if (button) button.classList.remove("active");
+    });
+
+    if (removeControls) {
+        removeDrawingControls();
+    }
+}
+
+Object.entries(toolButtons).forEach(([tool, button]) => {
+    if (!button) return;
+
+    button.addEventListener("click", () => {
         if (HuntMark.activeTool === tool) {
-
-            if (tool === "boundary") {
-                cancelBoundary();
+            if (tool === "boundary" || tool === "trail") {
+                showMessage("Finish or cancel the drawing first.");
+                return;
             }
 
             deactivateTool();
-
             showMessage("Tool deactivated.");
-
         } else {
-
             activateTool(tool);
-
         }
-
     });
-
 });
 
+/* ============================================
+   LOCATIONS: ADD, EDIT, DELETE
+   ============================================ */
 
-// ============================================
-// BOUNDARY SYSTEM
-// ============================================
+function addLocation(lat, lng, type, details, saved = false) {
+    const location = {
+        id: HuntMark.nextId++,
+        type,
+        name: details.name,
+        notes: "",
+        lat,
+        lng
+    };
+
+    HuntMark.locations.push(location);
+
+    renderLocation(location);
+    updateCounts();
+    saveData();
+
+    if (!saved) {
+        showMessage(`${location.name} added to your map.`);
+    }
+}
+
+function renderLocation(location) {
+    const details = markerTypes[location.type];
+    if (!details || !map) return;
+
+    const markerIcon = L.divIcon({
+        className: "huntmark-marker",
+        html: `<span>${details.icon}</span>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20]
+    });
+
+    const marker = L.marker(
+        [location.lat, location.lng],
+        { icon: markerIcon }
+    ).addTo(map);
+
+    marker.bindPopup(() => createLocationPopup(location));
+
+    marker.on("popupopen", event => {
+        const popup = event.popup.getElement();
+        if (!popup) return;
+
+        const editButton = popup.querySelector("[data-edit-location]");
+        const deleteButton = popup.querySelector("[data-delete-location]");
+
+        if (editButton) {
+            editButton.addEventListener("click", () => {
+                editLocation(location.id);
+            });
+        }
+
+        if (deleteButton) {
+            deleteButton.addEventListener("click", () => {
+                deleteLocation(location.id);
+            });
+        }
+    });
+
+    location._marker = marker;
+}
+
+function createLocationPopup(location) {
+    const popup = document.createElement("div");
+    popup.className = "marker-popup";
+
+    const title = document.createElement("strong");
+    title.textContent = location.name;
+
+    const coordinates = document.createElement("p");
+    coordinates.textContent =
+        `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`;
+
+    const notes = document.createElement("p");
+    notes.textContent = location.notes || "No notes added.";
+
+    const editButton = document.createElement("button");
+    editButton.type = "button";
+    editButton.textContent = "Edit";
+    editButton.dataset.editLocation = "";
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.textContent = "Delete";
+    deleteButton.dataset.deleteLocation = "";
+
+    popup.append(title, coordinates, notes, editButton, deleteButton);
+
+    return popup;
+}
+
+function editLocation(id) {
+    const location = HuntMark.locations.find(item => item.id === id);
+    if (!location) return;
+
+    const newName = prompt("Location name:", location.name);
+    if (newName === null) return;
+
+    const newNotes = prompt("Notes (optional):", location.notes || "");
+    if (newNotes === null) return;
+
+    const cleanName = newName.trim();
+
+    if (!cleanName) {
+        showMessage("Location name cannot be empty.");
+        return;
+    }
+
+    location.name = cleanName;
+    location.notes = newNotes.trim();
+
+    location._marker?.setPopupContent(() => createLocationPopup(location));
+
+    saveData();
+    showMessage("Location updated.");
+}
+
+function deleteLocation(id) {
+    const location = HuntMark.locations.find(item => item.id === id);
+    if (!location) return;
+
+    if (!confirm(`Delete "${location.name}" from your map?`)) return;
+
+    if (location._marker) {
+        map.removeLayer(location._marker);
+    }
+
+    HuntMark.locations = HuntMark.locations.filter(item => item.id !== id);
+
+    updateCounts();
+    saveData();
+    showMessage(`${location.name} deleted.`);
+}
+
+/* ============================================
+   PROPERTY BOUNDARY
+   ============================================ */
 
 function startBoundary() {
-
     clearTemporaryBoundary();
 
     HuntMark.boundaryPoints = [];
 
-    createBoundaryControls();
+    createDrawingControls(
+        "Draw Property Boundary",
+        "Click around the edges of your property.",
+        "Finish Boundary",
+        finishBoundary,
+        cancelBoundary
+    );
 
     updateBoundaryStatus();
-
 }
 
-
 function addBoundaryPoint(lat, lng) {
-
-    if (HuntMark.activeTool !== "boundary") {
-        return;
-    }
-
-
     const point = L.latLng(lat, lng);
-
     HuntMark.boundaryPoints.push(point);
 
-
     const marker = L.circleMarker(point, {
-
         radius: 6,
-
         weight: 2,
-
         color: "#D97706",
-
         fillColor: "#D97706",
-
         fillOpacity: 1
-
     }).addTo(map);
-
 
     HuntMark.boundaryMarkers.push(marker);
 
-
     updateBoundaryLine();
-
     updateBoundaryStatus();
 
-
-    showMessage(
-        `Boundary point ${HuntMark.boundaryPoints.length} added.`
-    );
-
+    showMessage(`Boundary point ${HuntMark.boundaryPoints.length} added.`);
 }
-
 
 function updateBoundaryLine() {
-
     if (HuntMark.boundaryLine) {
-
-        map.removeLayer(
-            HuntMark.boundaryLine
-        );
-
+        map.removeLayer(HuntMark.boundaryLine);
     }
 
+    if (HuntMark.boundaryPoints.length < 2) return;
 
-    if (HuntMark.boundaryPoints.length < 2) {
-        return;
-    }
-
-
-    HuntMark.boundaryLine = L.polyline(
-
-        HuntMark.boundaryPoints,
-
-        {
-            color: "#D97706",
-            weight: 4,
-            dashArray: "8, 8"
-        }
-
-    ).addTo(map);
-
+    HuntMark.boundaryLine = L.polyline(HuntMark.boundaryPoints, {
+        color: "#D97706",
+        weight: 4,
+        dashArray: "8, 8"
+    }).addTo(map);
 }
 
-
 function finishBoundary() {
-
     if (HuntMark.boundaryPoints.length < 3) {
-
-        showMessage(
-            "You need at least 3 points to create a boundary."
-        );
-
+        showMessage("Add at least 3 points to finish your boundary.");
         return;
     }
 
+    const newBoundary = HuntMark.boundaryPoints.map(point => ({
+        lat: point.lat,
+        lng: point.lng
+    }));
+
+    // Keep existing locations only if the new boundary contains them.
+    const outsideLocations = HuntMark.locations.filter(location =>
+        !pointInsideBoundary(location.lat, location.lng, newBoundary)
+    );
+
+    if (outsideLocations.length > 0 &&
+        !confirm(
+            `${outsideLocations.length} existing location(s) are outside ` +
+            "the new boundary. Keep the boundary anyway? Those locations " +
+            "will remain on the map, but you cannot add new ones outside it."
+        )) {
+        return;
+    }
+
+    HuntMark.savedBoundary = newBoundary;
+
+    clearTemporaryBoundary();
+    renderSavedBoundary();
+
+    HuntMark.boundaryPoints = [];
+
+    updateBoundaryStatus();
+    removeDrawingControls();
+    deactivateTool(false);
+    saveData();
+
+    showMessage("Property boundary saved.");
+}
+
+function cancelBoundary() {
+    clearTemporaryBoundary();
+    HuntMark.boundaryPoints = [];
+
+    updateBoundaryStatus();
+    removeDrawingControls();
+    deactivateTool(false);
+
+    showMessage("Boundary drawing cancelled.");
+}
+
+function clearTemporaryBoundary() {
+    HuntMark.boundaryMarkers.forEach(marker => map.removeLayer(marker));
+    HuntMark.boundaryMarkers = [];
 
     if (HuntMark.boundaryLine) {
-
-        map.removeLayer(
-            HuntMark.boundaryLine
-        );
-
+        map.removeLayer(HuntMark.boundaryLine);
         HuntMark.boundaryLine = null;
-
     }
+}
 
-
+function renderSavedBoundary() {
     if (HuntMark.boundaryPolygon) {
-
-        map.removeLayer(
-            HuntMark.boundaryPolygon
-        );
-
+        map.removeLayer(HuntMark.boundaryPolygon);
+        HuntMark.boundaryPolygon = null;
     }
 
+    if (HuntMark.savedBoundary.length < 3) {
+        updateBoundaryStatus();
+        return;
+    }
 
-    HuntMark.boundaryPolygon = L.polygon(
+    const points = HuntMark.savedBoundary.map(point =>
+        [point.lat, point.lng]
+    );
 
-        HuntMark.boundaryPoints,
-
-        {
-            color: "#D97706",
-            weight: 4,
-            fillColor: "#D97706",
-            fillOpacity: 0.18
-        }
-
-    ).addTo(map);
-
+    HuntMark.boundaryPolygon = L.polygon(points, {
+        color: "#D97706",
+        weight: 4,
+        fillColor: "#D97706",
+        fillOpacity: 0.18
+    }).addTo(map);
 
     HuntMark.boundaryPolygon.bindPopup(
         "<strong>HuntMark Property Boundary</strong>"
     );
 
+    updateBoundaryStatus();
+}
 
-    HuntMark.boundaryPolygon.openPopup();
+/* Point-in-polygon test using longitude/latitude coordinates. */
+function pointInsideBoundary(lat, lng, boundary = HuntMark.savedBoundary) {
+    if (boundary.length < 3) return true;
 
+    let inside = false;
 
-    document.getElementById("boundaryStatus").textContent =
-        "Set";
+    for (let i = 0, j = boundary.length - 1;
+         i < boundary.length;
+         j = i++) {
 
+        const xi = boundary[i].lng;
+        const yi = boundary[i].lat;
+        const xj = boundary[j].lng;
+        const yj = boundary[j].lat;
 
-    showMessage(
-        "Property boundary saved."
+        const crosses = (
+            (yi > lat) !== (yj > lat) &&
+            lng < ((xj - xi) * (lat - yi)) / (yj - yi) + xi
+        );
+
+        if (crosses) inside = !inside;
+    }
+
+    return inside;
+}
+
+/* ============================================
+   TRAIL DRAWING
+   ============================================ */
+
+function startTrail() {
+    clearTemporaryTrail();
+
+    HuntMark.trailPoints = [];
+
+    createDrawingControls(
+        "Plan a Trail",
+        "Click along the route you want to mark.",
+        "Finish Trail",
+        finishTrail,
+        cancelTrail
     );
 
-
-    removeBoundaryControls();
-
-    deactivateTool();
-
+    showMessage("Click the map to add trail points.");
 }
 
+function addTrailPoint(lat, lng) {
+    const point = L.latLng(lat, lng);
+    HuntMark.trailPoints.push(point);
 
-function cancelBoundary() {
+    const marker = L.circleMarker(point, {
+        radius: 4,
+        color: "#183A2A",
+        fillColor: "#D97706",
+        fillOpacity: 1
+    }).addTo(map);
 
-    clearTemporaryBoundary();
+    HuntMark.trailMarkers.push(marker);
 
-    HuntMark.boundaryPoints = [];
+    if (HuntMark.trailLine) {
+        map.removeLayer(HuntMark.trailLine);
+    }
 
-    updateBoundaryStatus();
+    if (HuntMark.trailPoints.length >= 2) {
+        HuntMark.trailLine = L.polyline(HuntMark.trailPoints, {
+            color: "#183A2A",
+            weight: 4
+        }).addTo(map);
+    }
 
-    removeBoundaryControls();
-
+    showMessage(`Trail point ${HuntMark.trailPoints.length} added.`);
 }
 
+function finishTrail() {
+    if (HuntMark.trailPoints.length < 2) {
+        showMessage("Add at least 2 points to finish a trail.");
+        return;
+    }
 
-function clearTemporaryBoundary() {
+    const trail = L.polyline(HuntMark.trailPoints, {
+        color: "#183A2A",
+        weight: 4
+    }).addTo(map);
 
-    HuntMark.boundaryMarkers.forEach(marker => {
+    const trailId = HuntMark.nextId++;
 
-        if (map) {
-            map.removeLayer(marker);
+    trail.bindPopup(
+        `<strong>Planned Trail</strong><br>
+         <button type="button" id="deleteTrail-${trailId}">Delete Trail</button>`
+    );
+
+    trail.on("popupopen", event => {
+        const button = event.popup.getElement()
+            ?.querySelector(`#deleteTrail-${trailId}`);
+
+        if (button) {
+            button.addEventListener("click", () => {
+                if (confirm("Delete this planned trail?")) {
+                    map.removeLayer(trail);
+                    HuntMark.trails = (HuntMark.trails || [])
+                        .filter(item => item.id !== trailId);
+                    saveData();
+                    showMessage("Trail deleted.");
+                }
+            });
         }
-
     });
 
+    if (!HuntMark.trails) HuntMark.trails = [];
 
-    HuntMark.boundaryMarkers = [];
+    HuntMark.trails.push({
+        id: trailId,
+        points: HuntMark.trailPoints.map(point => ({
+            lat: point.lat,
+            lng: point.lng
+        }))
+    });
 
+    clearTemporaryTrail();
+    HuntMark.trailPoints = [];
 
-    if (HuntMark.boundaryLine) {
+    removeDrawingControls();
+    deactivateTool(false);
+    saveData();
 
-        map.removeLayer(
-            HuntMark.boundaryLine
-        );
-
-        HuntMark.boundaryLine = null;
-
-    }
-
+    showMessage("Trail saved.");
 }
 
+function cancelTrail() {
+    clearTemporaryTrail();
+    HuntMark.trailPoints = [];
 
-function createBoundaryControls() {
+    removeDrawingControls();
+    deactivateTool(false);
 
-    removeBoundaryControls();
+    showMessage("Trail drawing cancelled.");
+}
 
+function clearTemporaryTrail() {
+    HuntMark.trailMarkers.forEach(marker => map.removeLayer(marker));
+    HuntMark.trailMarkers = [];
+
+    if (HuntMark.trailLine) {
+        map.removeLayer(HuntMark.trailLine);
+        HuntMark.trailLine = null;
+    }
+}
+
+/* ============================================
+   SHARED DRAWING CONTROLS
+   ============================================ */
+
+function createDrawingControls(title, help, finishLabel, onFinish, onCancel) {
+    removeDrawingControls();
 
     const controls = document.createElement("div");
+    controls.id = "drawingControls";
+    controls.className = "boundary-controls";
 
-    controls.id = "boundaryControls";
+    const helpBox = document.createElement("div");
+    helpBox.className = "boundary-help";
 
-    controls.className =
-        "boundary-controls";
+    const heading = document.createElement("strong");
+    heading.textContent = title;
 
+    const description = document.createElement("span");
+    description.textContent = help;
 
-    controls.innerHTML = `
+    helpBox.append(heading, description);
 
-        <div class="boundary-help">
-            <strong>Draw Property Boundary</strong>
-            <span>Click around the property to add points.</span>
-        </div>
+    const finish = document.createElement("button");
+    finish.type = "button";
+    finish.className = "boundary-finish";
+    finish.textContent = `✓ ${finishLabel}`;
+    finish.addEventListener("click", onFinish);
 
-        <button
-            id="finishBoundary"
-            class="boundary-finish"
-        >
-            ✓ Finish Boundary
-        </button>
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "boundary-cancel";
+    cancel.textContent = "✕ Cancel";
+    cancel.addEventListener("click", onCancel);
 
-        <button
-            id="cancelBoundary"
-            class="boundary-cancel"
-        >
-            ✕ Cancel
-        </button>
+    controls.append(helpBox, finish, cancel);
+    document.body.appendChild(controls);
+}
 
-    `;
+function removeDrawingControls() {
+    document.getElementById("drawingControls")?.remove();
 
+    // Remove the old control ID if an earlier version left it behind.
+    document.getElementById("boundaryControls")?.remove();
+}
 
-    document.body.appendChild(
-        controls
-    );
+/* ============================================
+   SAVE AND RESTORE
+   ============================================ */
 
+function saveData() {
+    const data = {
+        locations: HuntMark.locations.map(location => ({
+            id: location.id,
+            type: location.type,
+            name: location.name,
+            notes: location.notes,
+            lat: location.lat,
+            lng: location.lng
+        })),
 
-    document
-        .getElementById("finishBoundary")
-        .addEventListener(
-            "click",
-            finishBoundary
+        savedBoundary: HuntMark.savedBoundary,
+        trails: HuntMark.trails || [],
+        nextId: HuntMark.nextId
+    };
+
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (error) {
+        console.error("HuntMark could not save map data:", error);
+        showMessage("Unable to save map data in this browser.");
+    }
+}
+
+function loadSavedData() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+
+        const data = JSON.parse(raw);
+
+        HuntMark.locations = Array.isArray(data.locations)
+            ? data.locations
+            : [];
+
+        HuntMark.savedBoundary = Array.isArray(data.savedBoundary)
+            ? data.savedBoundary
+            : [];
+
+        HuntMark.trails = Array.isArray(data.trails)
+            ? data.trails
+            : [];
+
+        HuntMark.nextId = Number.isInteger(data.nextId)
+            ? data.nextId
+            : 1;
+
+        const highestId = HuntMark.locations.reduce(
+            (max, item) => Math.max(max, Number(item.id) || 0),
+            0
         );
 
+        HuntMark.nextId = Math.max(HuntMark.nextId, highestId + 1);
 
-    document
-        .getElementById("cancelBoundary")
-        .addEventListener(
-            "click",
-            cancelBoundary
-        );
-
-}
-
-
-function removeBoundaryControls() {
-
-    const controls =
-        document.getElementById(
-            "boundaryControls"
-        );
-
-
-    if (controls) {
-        controls.remove();
+    } catch (error) {
+        console.error("HuntMark could not restore saved data:", error);
+        showMessage("Saved map data could not be loaded.");
     }
-
 }
 
+function renderSavedLocations() {
+    const saved = [...HuntMark.locations];
 
-function updateBoundaryStatus() {
+    HuntMark.locations = [];
 
-    const status =
-        document.getElementById(
-            "boundaryStatus"
-        );
+    saved.forEach(location => {
+        const details = markerTypes[location.type];
+        if (!details) return;
 
+        HuntMark.locations.push(location);
+        renderLocation(location);
+    });
 
-    if (!status) {
-        return;
-    }
+    (HuntMark.trails || []).forEach(trail => {
+        if (!Array.isArray(trail.points) || trail.points.length < 2) return;
 
-
-    if (
-        HuntMark.boundaryPolygon
-    ) {
-
-        status.textContent =
-            "Set";
-
-        return;
-    }
-
-
-    if (
-        HuntMark.boundaryPoints.length > 0
-    ) {
-
-        status.textContent =
-            `${HuntMark.boundaryPoints.length} Points`;
-
-    } else {
-
-        status.textContent =
-            "Not Set";
-
-    }
-
-}
-
-
-// ============================================
-// LOCATION COUNT
-// ============================================
-
-function updateLocationCount() {
-
-    const element =
-        document.getElementById(
-            "locationCount"
-        );
-
-
-    if (!element) {
-        return;
-    }
-
-
-    element.textContent =
-        HuntMark.counts.stands +
-        HuntMark.counts.cameras +
-        HuntMark.counts.food +
-        HuntMark.counts.water;
-
-}
-
-
-// ============================================
-// LOCATION
-// ============================================
-
-const locationButton =
-    document.getElementById(
-        "locationButton"
-    );
-
-
-if (locationButton) {
-
-    locationButton.addEventListener(
-        "click",
-        function() {
-
-            if (!navigator.geolocation) {
-
-                showMessage(
-                    "Location services are not supported."
-                );
-
-                return;
-            }
-
-
-            showMessage(
-                "Finding your location..."
-            );
-
-
-            navigator.geolocation.getCurrentPosition(
-
-                function(position) {
-
-                    const latitude =
-                        position.coords.latitude;
-
-                    const longitude =
-                        position.coords.longitude;
-
-
-                    map.setView(
-                        [
-                            latitude,
-                            longitude
-                        ],
-                        16
-                    );
-
-
-                    L.marker(
-                        [
-                            latitude,
-                            longitude
-                        ]
-                    )
-                    .addTo(map)
-                    .bindPopup(
-                        "<strong>You are here</strong>"
-                    )
-                    .openPopup();
-
-
-                    showMessage(
-                        "Map centered on your location."
-                    );
-
-                },
-
-
-                function() {
-
-                    showMessage(
-                        "Unable to access your location."
-                    );
-
-                },
-
-
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 30000
-                }
-
-            );
-
-        }
-    );
-
-}
-
-
-// ============================================
-// SATELLITE
-// ============================================
-
-const satelliteButton =
-    document.getElementById(
-        "satelliteButton"
-    );
-
-
-if (satelliteButton) {
-
-    satelliteButton.addEventListener(
-        "click",
-        function() {
-
-            if (!map) {
-                return;
-            }
-
-
-            if (!HuntMark.satelliteMode) {
-
-                map.removeLayer(
-                    standardLayer
-                );
-
-                satelliteLayer.addTo(
-                    map
-                );
-
-
-                HuntMark.satelliteMode =
-                    true;
-
-
-                satelliteButton.textContent =
-                    "🗺️ Map";
-
-
-                showMessage(
-                    "Satellite imagery enabled."
-                );
-
-            } else {
-
-                map.removeLayer(
-                    satelliteLayer
-                );
-
-                standardLayer.addTo(
-                    map
-                );
-
-
-                HuntMark.satelliteMode =
-                    false;
-
-
-                satelliteButton.textContent =
-                    "🛰️ Satellite";
-
-
-                showMessage(
-                    "Standard map enabled."
-                );
-
-            }
-
-        }
-    );
-
-}
-
-
-// ============================================
-// ADD MAP MARKER
-// ============================================
-
-function addMapMarker(
-    lat,
-    lng,
-    icon,
-    name,
-    countType
-) {
-
-    const markerIcon =
-        L.divIcon({
-
-            className:
-                "huntmark-marker",
-
-            html:
-                `<span>${icon}</span>`,
-
-            iconSize:
-                [40, 40],
-
-            iconAnchor:
-                [20, 20],
-
-            popupAnchor:
-                [0, -20]
-
-        });
-
-
-    const marker =
-        L.marker(
-
-            [
-                lat,
-                lng
-            ],
-
-            {
-                icon:
-                    markerIcon
-            }
-
+        const line = L.polyline(
+            trail.points.map(point => [point.lat, point.lng]),
+            { color: "#183A2A", weight: 4 }
         ).addTo(map);
 
+        line.bindPopup(
+            `<strong>Planned Trail</strong><br>
+             <button type="button" id="deleteTrail-${trail.id}">Delete Trail</button>`
+        );
 
-    marker.bindPopup(`
+        line.on("popupopen", event => {
+            const button = event.popup.getElement()
+                ?.querySelector(`#deleteTrail-${trail.id}`);
 
-        <div class="marker-popup">
-
-            <strong>${name}</strong>
-
-            <br>
-
-            <small>
-                ${lat.toFixed(5)},
-                ${lng.toFixed(5)}
-            </small>
-
-        </div>
-
-    `);
-
-
-    HuntMark.counts[countType]++;
-
-
-    updateCounts();
-
-
-    showMessage(
-        `${name} added to your map.`
-    );
-
-
-    deactivateTool();
-
+            if (button) {
+                button.addEventListener("click", () => {
+                    if (confirm("Delete this planned trail?")) {
+                        map.removeLayer(line);
+                        HuntMark.trails = HuntMark.trails.filter(
+                            item => item.id !== trail.id
+                        );
+                        saveData();
+                        showMessage("Trail deleted.");
+                    }
+                });
+            }
+        });
+    });
 }
 
-
-// ============================================
-// UPDATE COUNTERS
-// ============================================
+/* ============================================
+   COUNTERS AND PROPERTY STATUS
+   ============================================ */
 
 function updateCounts() {
+    HuntMark.counts = {
+        stands: 0,
+        cameras: 0,
+        food: 0,
+        water: 0
+    };
 
-    const standCount =
-        document.getElementById(
-            "standCount"
-        );
+    HuntMark.locations.forEach(location => {
+        const details = markerTypes[location.type];
+        if (details) HuntMark.counts[details.count]++;
+    });
 
-    const cameraCount =
-        document.getElementById(
-            "cameraCount"
-        );
+    const ids = {
+        stands: "standCount",
+        cameras: "cameraCount",
+        food: "foodCount",
+        water: "waterCount"
+    };
 
-    const foodCount =
-        document.getElementById(
-            "foodCount"
-        );
+    Object.entries(ids).forEach(([type, id]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = HuntMark.counts[type];
+    });
 
-    const waterCount =
-        document.getElementById(
-            "waterCount"
-        );
+    const locationCount = document.getElementById("locationCount");
 
-
-    if (standCount) {
-        standCount.textContent =
-            HuntMark.counts.stands;
+    if (locationCount) {
+        locationCount.textContent = HuntMark.locations.length;
     }
-
-
-    if (cameraCount) {
-        cameraCount.textContent =
-            HuntMark.counts.cameras;
-    }
-
-
-    if (foodCount) {
-        foodCount.textContent =
-            HuntMark.counts.food;
-    }
-
-
-    if (waterCount) {
-        waterCount.textContent =
-            HuntMark.counts.water;
-    }
-
-
-    updateLocationCount();
-
 }
 
+function updateBoundaryStatus() {
+    const status = document.getElementById("boundaryStatus");
+    if (!status) return;
 
-// ============================================
-// NOTIFICATIONS
-// ============================================
+    if (HuntMark.savedBoundary.length >= 3) {
+        status.textContent = "Set";
+    } else if (HuntMark.boundaryPoints.length > 0) {
+        status.textContent = `${HuntMark.boundaryPoints.length} Points`;
+    } else {
+        status.textContent = "Not Set";
+    }
+}
+
+/* ============================================
+   LOCATION BUTTON
+   ============================================ */
+
+const locationButton = document.getElementById("locationButton");
+
+if (locationButton) {
+    locationButton.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+            showMessage("Location services are not supported.");
+            return;
+        }
+
+        showMessage("Finding your location...");
+
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                map.setView([lat, lng], 16);
+
+                L.marker([lat, lng])
+                    .addTo(map)
+                    .bindPopup("<strong>You are here</strong>")
+                    .openPopup();
+
+                showMessage("Map centered on your location.");
+            },
+            () => showMessage("Unable to access your location."),
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 30000
+            }
+        );
+    });
+}
+
+/* ============================================
+   SATELLITE TOGGLE
+   ============================================ */
+
+const satelliteButton = document.getElementById("satelliteButton");
+
+if (satelliteButton) {
+    satelliteButton.addEventListener("click", () => {
+        if (!map) return;
+
+        if (!HuntMark.satelliteMode) {
+            map.removeLayer(standardLayer);
+            satelliteLayer.addTo(map);
+
+            HuntMark.satelliteMode = true;
+            satelliteButton.textContent = "🗺️ Map";
+
+            showMessage("Satellite imagery enabled.");
+        } else {
+            map.removeLayer(satelliteLayer);
+            standardLayer.addTo(map);
+
+            HuntMark.satelliteMode = false;
+            satelliteButton.textContent = "🛰️ Satellite";
+
+            showMessage("Standard map enabled.");
+        }
+    });
+}
+
+/* ============================================
+   NAVIGATION AND MOBILE MENU
+   ============================================ */
+
+document.querySelectorAll(".nav-btn").forEach(button => {
+    button.addEventListener("click", () => {
+        document.querySelectorAll(".nav-btn").forEach(item =>
+            item.classList.remove("active")
+        );
+
+        button.classList.add("active");
+
+        const section = button.textContent.trim();
+
+        if (section === "Map") showMessage("Map view active.");
+        if (section === "Property") showMessage("Property tools active.");
+        if (section === "Weather") showMessage("Weather tools coming next.");
+        if (section === "Reports") showMessage("Reports coming soon.");
+    });
+});
+
+const menuButton = document.getElementById("menuButton");
+const nav = document.querySelector(".main-nav");
+
+if (menuButton && nav) {
+    menuButton.addEventListener("click", () => {
+        nav.classList.toggle("open");
+    });
+}
+
+/* ============================================
+   NOTIFICATIONS
+   ============================================ */
 
 function showMessage(message) {
+    document.querySelector(".huntmark-message")?.remove();
 
-    const existingMessage =
-        document.querySelector(
-            ".huntmark-message"
-        );
+    const element = document.createElement("div");
+    element.className = "huntmark-message";
+    element.textContent = message;
 
+    document.body.appendChild(element);
 
-    if (existingMessage) {
-        existingMessage.remove();
-    }
+    setTimeout(() => element.classList.add("show"), 10);
 
-
-    const messageElement =
-        document.createElement(
-            "div"
-        );
-
-
-    messageElement.className =
-        "huntmark-message";
-
-
-    messageElement.textContent =
-        message;
-
-
-    document.body.appendChild(
-        messageElement
-    );
-
-
-    setTimeout(function() {
-
-        messageElement.classList.add(
-            "show"
-        );
-
-    }, 10);
-
-
-    setTimeout(function() {
-
-        messageElement.classList.remove(
-            "show"
-        );
-
-
-        setTimeout(function() {
-
-            messageElement.remove();
-
-        }, 300);
-
-    }, 2500);
-
+    setTimeout(() => {
+        element.classList.remove("show");
+        setTimeout(() => element.remove(), 300);
+    }, 2800);
 }
 
+/* ============================================
+   START
+   ============================================ */
 
-// ============================================
-// START HUNTMARK
-// ============================================
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function() {
-
-        initializeMap();
-
-        updateCounts();
-
-        console.log(
-            "HuntMark is ready."
-        );
-
-    }
-);
+document.addEventListener("DOMContentLoaded", initializeMap);
